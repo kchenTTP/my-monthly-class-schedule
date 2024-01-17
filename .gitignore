@@ -1,0 +1,11 @@
+
+# Secrets
+.streamlit/secrets.toml
+.env
+
+# Python environments
+env/
+environment.yml
+
+# Vscode workspace settings
+.vscode/
