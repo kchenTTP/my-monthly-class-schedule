@@ -144,8 +144,10 @@ with st.sidebar:
             default=st.session_state.LANGUAGES_DICT.values(),
         )
 
+        # TODO: Include information/ link to other NYPL Techconnect Classes
 
-st.title(":rainbow[Kang's NYPL Teaching Schedule]")
+
+st.title("Kang's NYPL Monthly Class Schedule")
 
 if selected_month is not None:
     year = int(selected_month[:4])

@@ -9,3 +9,6 @@ environment.yml
 
 # Vscode workspace settings
 .vscode/
+
+# OS X stuff
+*.DS_Store
