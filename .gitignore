@@ -2,6 +2,7 @@
 # Secrets
 .streamlit/secrets.toml
 .env
+.secrets/
 
 # Python environments
 env/
@@ -12,3 +13,6 @@ environment.yml
 
 # OS X stuff
 *.DS_Store
+
+# Others
+TODO.md

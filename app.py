@@ -111,7 +111,7 @@ def get_language_df(df: pd.DataFrame, languages: list[str]) -> pd.DataFrame:
 def process_drupal_link(df: pd.DataFrame) -> pd.DataFrame:
     df.loc[df["st time"] < datetime.now(), "drupal link"] = np.nan
 
-    return processed_df
+    return df
 
 
 def get_calender_event_list(df: pd.DataFrame) -> list[dict]:
