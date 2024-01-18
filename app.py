@@ -220,7 +220,7 @@ if selected_month is not None:
     processed_df = get_language_df(processed_df, languages=selected_languages)
     print(processed_df.info())
 
-    st.markdown(f"### {selected_month}")
+    # st.markdown(f"### {selected_month}")
 
     st.code(
         """
@@ -236,7 +236,7 @@ if selected_month is not None:
         use_container_width=True,
         hide_index=True,
         column_config={
-            "date": st.column_config.DateColumn("Date", format="MM/DD"),
+            "date": st.column_config.DateColumn("Date", format="YYYY/MM/DD"),
             "day": st.column_config.TextColumn("Day"),
             "st time": st.column_config.TimeColumn("Start Time", format="hh:mm a"),
             "end time": st.column_config.TimeColumn("End Time", format="hh:mm a"),
@@ -274,7 +274,7 @@ if selected_month is not None:
 
     calendar_options = {
         "headerToolbar": {
-            "left": "",
+            "left": "title",
             "right": "prev,next timeGridDay,timeGridWeek,dayGridMonth",
         },
         "editable": "false",
@@ -297,9 +297,6 @@ if selected_month is not None:
         }
         .fc-event-time {
             font-style: italic;
-        }
-        .fc-toolbar-title {
-            font-size: 2rem;
         }
         .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
             background-color: #99466C;
