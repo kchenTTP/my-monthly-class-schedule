@@ -152,6 +152,8 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 # Connect to Google Sheets
 conn = st.connection("gsheets", type=GSheetsConnection)
 
+if "CURRENT_MONTH" not in st.session_state:
+    st.session_state["CURRENT_MONTH"] = date.today().strftime("%Y %B")
 if "LOCATIONS_LIST" not in st.session_state:
     st.session_state["LOCATIONS_LIST"] = ["Chatham Sq", "Online", "Seward Park", "SNFL"]
 if "LOCATION_RESOURCE_ID_MAP" not in st.session_state:
@@ -176,7 +178,11 @@ with st.sidebar:
     st.header("Options")
     with st.container(border=True):
         st.subheader("Month")
-        selected_month = st.selectbox("Select a month", options=get_months_list())
+        selected_month = st.selectbox(
+            "Select a month",
+            options=get_months_list(),
+            index=get_months_list().index(st.session_state.CURRENT_MONTH),
+        )
 
         st.subheader("Locations")
         selected_locations = st.multiselect(
@@ -220,7 +226,7 @@ if selected_month is not None:
     processed_df = get_language_df(processed_df, languages=selected_languages)
     print(processed_df.info())
 
-    # st.markdown(f"### {selected_month}")
+    # styled_df = processed_df.apply(highlight_today, axis=1)
 
     st.code(
         """
