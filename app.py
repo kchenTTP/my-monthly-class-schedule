@@ -1,14 +1,12 @@
 # cspell: ignore dataframe, gsheets, streamlit, Kang's, NYPL, SNFL, selectbox
-import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-
-from streamlit_calendar import calendar
-from datetime import datetime, date, timedelta
-
 import warnings
+from datetime import date, datetime, timedelta
 
 import numpy as np
 import pandas as pd
+import streamlit as st
+from streamlit_calendar import calendar
+from streamlit_gsheets import GSheetsConnection
 
 
 # Functions
@@ -57,18 +55,10 @@ def process_dataframe(
 
     # Fix incorrect datatypes
     processed_df["st time"] = (
-        year
-        + "/"
-        + processed_df["date"].astype(str)
-        + " "
-        + processed_df["st time"].astype(str)
+        year + "/" + processed_df["date"].astype(str) + " " + processed_df["st time"].astype(str)
     )
     processed_df["end time"] = (
-        year
-        + "/"
-        + processed_df["date"].astype(str)
-        + " "
-        + processed_df["end time"].astype(str)
+        year + "/" + processed_df["date"].astype(str) + " " + processed_df["end time"].astype(str)
     )
     processed_df["date"] = processed_df["st time"]
 
@@ -84,9 +74,7 @@ def get_location_df(df: pd.DataFrame, locations: list[str]) -> pd.DataFrame:
     filtered_df = pd.DataFrame()
 
     for location in locations:
-        filtered_df = pd.concat(
-            [filtered_df, df[df["location"] == location]], ignore_index=True
-        )
+        filtered_df = pd.concat([filtered_df, df[df["location"] == location]], ignore_index=True)
     filtered_df = filtered_df.sort_values(by="date", ascending=True)
 
     return filtered_df
@@ -122,9 +110,7 @@ def get_calender_event_list(df: pd.DataFrame) -> list[dict]:
             "color": st.session_state.LOCATION_COLOR_MAP.get(row["location"]),
             "start": row["st time"].strftime("%Y-%m-%dT%H:%M:%S"),
             "end": row["end time"].strftime("%Y-%m-%dT%H:%M:%S"),
-            "resourceId": st.session_state.LOCATION_RESOURCE_ID_MAP.get(
-                row["location"]
-            ),
+            "resourceId": st.session_state.LOCATION_RESOURCE_ID_MAP.get(row["location"]),
         }
         event_list.append(event_dict)
 
@@ -141,6 +127,7 @@ def get_first_day_of_month(month_str: str) -> str:
 # STREAMLIT
 st.set_page_config(
     page_title="Kang's NYPL Teaching Schedule",
+    page_icon="https://lh4.googleusercontent.com/bFjt6UVpUVskAbCqvpWfoFJCG-0DUMBmh0J5IbLVCTZk-rTLKg1qpCZO78Vamw1Me27fe2lCwCrMP1X5sj4WSXika4k_0RZNDp2Th6Zzi88vb2Yc",
     initial_sidebar_state="expanded",
     layout="wide",
 )
@@ -215,9 +202,7 @@ if selected_month is not None:
     year, month = selected_month.split()
 
     df = get_sheet_for_month(selected_month)
-    processed_df = process_dataframe(
-        df, year=year, include_series_based=series_based_class
-    )
+    processed_df = process_dataframe(df, year=year, include_series_based=series_based_class)
     # remove link if current time is greater that start time
     processed_df = process_drupal_link(processed_df)
 
@@ -315,6 +300,4 @@ if selected_month is not None:
     """
 
     calendar_events = get_calender_event_list(processed_df)
-    calendar = calendar(
-        events=calendar_events, options=calendar_options, custom_css=custom_css
-    )
+    calendar = calendar(events=calendar_events, options=calendar_options, custom_css=custom_css)
