@@ -10,7 +10,6 @@ from streamlit_calendar import calendar
 from streamlit_gsheets import GSheetsConnection
 
 logger = logging.getLogger(__name__)
-
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(asctime)s: %(message)s")
 
 
@@ -139,11 +138,15 @@ def get_calender_event_list(df: pd.DataFrame) -> list[dict]:
     return event_list
 
 
-def get_first_day_of_month(month_str: str) -> str:
+def get_day_view_date(month_str: str, cur_month: str) -> str:
     year, month_name = month_str.split()
     month_number = datetime.strptime(month_name, "%B").month
 
-    return f"{year}-{month_number:02d}-01"
+    return (
+        f"{year}-{month_number:02d}-01"
+        if month_str != cur_month
+        else date.today().strftime("%Y-%m-%d")
+    )
 
 
 # STREAMLIT
@@ -264,7 +267,7 @@ if selected_month is not None:
     st.divider()
 
     # Calender View
-    calendar_init_date = get_first_day_of_month(selected_month)
+    calendar_init_date = get_day_view_date(selected_month, st.session_state.CURRENT_MONTH)
 
     calendar_resources = [
         {
