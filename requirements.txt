@@ -1,2 +1,5 @@
-st-gsheets-connection
-streamlit-calendar
+streamlit==1.32.0
+pandas==1.5.3
+numpy==1.26.4
+st-gsheets-connection==0.0.3
+streamlit-calendar==1.1.0
