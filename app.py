@@ -1,15 +1,37 @@
-# cspell: ignore dataframe, gsheets, streamlit, Kang's, NYPL, SNFL, selectbox
+import logging
 import warnings
 from datetime import date, datetime, timedelta
 
 import numpy as np
 import pandas as pd
+import requests
 import streamlit as st
 from streamlit_calendar import calendar
 from streamlit_gsheets import GSheetsConnection
 
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(asctime)s: %(message)s")
+
 
 # Functions
+def scrape_favicon() -> str | None:
+    url = "https://sites.google.com/nypl.org/techconnect/"
+
+    try:
+        resp = requests.get(url)
+        resp.raise_for_status()
+
+        for line in resp.text.splitlines():
+            if 'rel="icon"' in line and 'href="' in line:
+                favicon_url = line.split('href="')[-1].split('"')[0]
+                return favicon_url
+
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Unable to fetch favicon: {e}")
+        return None
+
+
 def get_months_list() -> list[str]:
     today = date.today()
     first_month = date(2023, 5, 1)
@@ -127,7 +149,7 @@ def get_first_day_of_month(month_str: str) -> str:
 # STREAMLIT
 st.set_page_config(
     page_title="Kang's NYPL Teaching Schedule",
-    page_icon="https://lh4.googleusercontent.com/bFjt6UVpUVskAbCqvpWfoFJCG-0DUMBmh0J5IbLVCTZk-rTLKg1qpCZO78Vamw1Me27fe2lCwCrMP1X5sj4WSXika4k_0RZNDp2Th6Zzi88vb2Yc",
+    page_icon=scrape_favicon(),
     initial_sidebar_state="expanded",
     layout="wide",
 )
@@ -209,7 +231,7 @@ if selected_month is not None:
     # TODO: Try Catch when location or language list is empty
     processed_df = get_location_df(processed_df, locations=selected_locations)
     processed_df = get_language_df(processed_df, languages=selected_languages)
-    print(processed_df.info())
+    logger.debug(processed_df.info())
 
     # styled_df = processed_df.apply(highlight_today, axis=1)
 
