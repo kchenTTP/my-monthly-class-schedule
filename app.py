@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import warnings
+from typing import Iterable
 from datetime import date, datetime, timedelta
 
 import numpy as np
@@ -8,6 +10,9 @@ import requests
 import streamlit as st
 from streamlit_calendar import calendar
 from streamlit_gsheets import GSheetsConnection
+
+from config import LOCATIONS_LIST, LOCATION_RESOURCE_ID_MAP, LANGUAGES_DICT, LOCATION_COLOR_MAP 
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(asctime)s: %(message)s")
@@ -52,6 +57,15 @@ def get_sheet_for_month(month: str) -> pd.DataFrame:
     )
 
 
+async def get_all_sheets(months: list[str]) -> list[pd.DataFrame]:
+    return await asyncio.gather(*[asyncio.to_thread(get_sheet_for_month, m) for m in months])
+
+
+def combine_dataframes(dfs: Iterable) -> pd.DataFrame:
+    # TODO: combine all dataframe into one giant one sorted by date
+    raise Exception("Not implemented yet.")
+
+
 def process_dataframe(
     df: pd.DataFrame, year: str, include_series_based: bool = False
 ) -> pd.DataFrame:
@@ -75,12 +89,20 @@ def process_dataframe(
     ]
 
     # Fix incorrect datatypes
-    processed_df["st time"] = (
-        year + "/" + processed_df["date"].astype(str) + " " + processed_df["st time"].astype(str)
-    )
-    processed_df["end time"] = (
-        year + "/" + processed_df["date"].astype(str) + " " + processed_df["end time"].astype(str)
-    )
+    if f"{year}" not in processed_df["date"].iloc(0):
+        processed_df["st time"] = (
+            year + "/" + processed_df["date"].astype(str) + " " + processed_df["st time"].astype(str)
+        )
+        processed_df["end time"] = (
+            year + "/" + processed_df["date"].astype(str) + " " + processed_df["end time"].astype(str)
+        )
+    else:
+        processed_df["st time"] = (
+            processed_df["date"].astype(str) + " " + processed_df["st time"].astype(str)
+        )
+        processed_df["end time"] = (
+            processed_df["date"].astype(str) + " " + processed_df["end time"].astype(str)
+        )
     processed_df["date"] = processed_df["st time"]
 
     processed_df["date"] = pd.to_datetime(processed_df["date"], errors="coerce")
@@ -167,23 +189,13 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 if "CURRENT_MONTH" not in st.session_state:
     st.session_state["CURRENT_MONTH"] = date.today().strftime("%Y %B")
 if "LOCATIONS_LIST" not in st.session_state:
-    st.session_state["LOCATIONS_LIST"] = ["Chatham Sq", "Online", "Seward Park", "SNFL"]
+    st.session_state["LOCATIONS_LIST"] = LOCATIONS_LIST
 if "LOCATION_RESOURCE_ID_MAP" not in st.session_state:
-    st.session_state["LOCATION_RESOURCE_ID_MAP"] = {
-        "Chatham Sq": "chatham",
-        "Online": "online",
-        "Seward Park": "seward",
-        "SNFL": "snfl",
-    }
+    st.session_state["LOCATION_RESOURCE_ID_MAP"] = LOCATION_RESOURCE_ID_MAP
 if "LANGUAGES_DICT" not in st.session_state:
-    st.session_state["LANGUAGES_DICT"] = {"en": "English", "zh": "Chinese"}
+    st.session_state["LANGUAGES_DICT"] = LANGUAGES_DICT
 if "LOCATION_COLOR_MAP" not in st.session_state:
-    st.session_state["LOCATION_COLOR_MAP"] = {
-        "Chatham Sq": "#54BCD6",
-        "Online": "#D65654",
-        "Seward Park": "#D6C853",
-        "SNFL": "#8F62BF",
-    }
+    st.session_state["LOCATION_COLOR_MAP"] = LOCATION_COLOR_MAP
 
 
 with st.sidebar:
