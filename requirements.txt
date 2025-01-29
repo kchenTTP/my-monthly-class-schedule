@@ -2,5 +2,6 @@ streamlit==1.41.0
 pandas==2.2.3
 numpy==2.2.2
 requests==2.32.3
+dateutils==0.6.12
 st-gsheets-connection==0.1.0
 streamlit-calendar==1.2.1

@@ -3,6 +3,7 @@ import logging
 import warnings
 from typing import Iterable
 from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 import numpy as np
 import pandas as pd
@@ -11,11 +12,18 @@ import streamlit as st
 from streamlit_calendar import calendar
 from streamlit_gsheets import GSheetsConnection
 
-from config.config import LOCATIONS_LIST, LOCATION_RESOURCE_ID_MAP, LANGUAGES_DICT, LOCATION_COLOR_MAP 
+from config.config import (
+    LOCATIONS_LIST,
+    LOCATION_RESOURCE_ID_MAP,
+    LANGUAGES_DICT,
+    LOCATION_COLOR_MAP,
+)
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(asctime)s: %(message)s")
+logging.basicConfig(
+    level=logging.WARNING, format="%(levelname)s %(asctime)s: %(message)s"
+)
 
 
 # Functions
@@ -40,12 +48,14 @@ def get_months_list() -> list[str]:
     today = date.today()
     first_month = date(2023, 5, 1)
 
-    month = today + timedelta(days=31)  # Start with next month
+    # Start with the first day of the next month
+    next_month = (today + relativedelta(months=1)).replace(day=1)
     months_list = []
 
-    while month >= first_month:
-        months_list.append(month.strftime("%Y %B"))
-        month -= timedelta(days=31)  # Go back one month
+    # Loop backwards in monthly steps
+    while next_month >= first_month:
+        months_list.append(next_month.strftime("%Y %B"))
+        next_month -= relativedelta(months=1)  # Subtract one month
 
     return months_list
 
@@ -58,7 +68,9 @@ def get_sheet_for_month(month: str) -> pd.DataFrame:
 
 
 async def get_all_sheets(months: list[str]) -> list[pd.DataFrame]:
-    return await asyncio.gather(*[asyncio.to_thread(get_sheet_for_month, m) for m in months])
+    return await asyncio.gather(
+        *[asyncio.to_thread(get_sheet_for_month, m) for m in months]
+    )
 
 
 def combine_dataframes(dfs: Iterable) -> pd.DataFrame:
@@ -91,17 +103,27 @@ def process_dataframe(
     # Fix incorrect datatypes
     if f"{year}" not in processed_df["date"].iloc[0]:
         processed_df["st time"] = (
-            year + "/" + processed_df["date"].astype(str) + " " + processed_df["st time"].astype(str)
+            year
+            + "/"
+            + processed_df["date"].astype(str)
+            + " "
+            + processed_df["st time"].astype(str)
         )
         processed_df["end time"] = (
-            year + "/" + processed_df["date"].astype(str) + " " + processed_df["end time"].astype(str)
+            year
+            + "/"
+            + processed_df["date"].astype(str)
+            + " "
+            + processed_df["end time"].astype(str)
         )
     else:
         processed_df["st time"] = (
             processed_df["date"].astype(str) + " " + processed_df["st time"].astype(str)
         )
         processed_df["end time"] = (
-            processed_df["date"].astype(str) + " " + processed_df["end time"].astype(str)
+            processed_df["date"].astype(str)
+            + " "
+            + processed_df["end time"].astype(str)
         )
     processed_df["date"] = processed_df["st time"]
 
@@ -117,7 +139,9 @@ def get_location_df(df: pd.DataFrame, locations: list[str]) -> pd.DataFrame:
     filtered_df = pd.DataFrame()
 
     for location in locations:
-        filtered_df = pd.concat([filtered_df, df[df["location"] == location]], ignore_index=True)
+        filtered_df = pd.concat(
+            [filtered_df, df[df["location"] == location]], ignore_index=True
+        )
     filtered_df = filtered_df.sort_values(by="date", ascending=True)
 
     return filtered_df
@@ -153,7 +177,9 @@ def get_calender_event_list(df: pd.DataFrame) -> list[dict]:
             "color": st.session_state.LOCATION_COLOR_MAP.get(row["location"]),
             "start": row["st time"].strftime("%Y-%m-%dT%H:%M:%S"),
             "end": row["end time"].strftime("%Y-%m-%dT%H:%M:%S"),
-            "resourceId": st.session_state.LOCATION_RESOURCE_ID_MAP.get(row["location"]),
+            "resourceId": st.session_state.LOCATION_RESOURCE_ID_MAP.get(
+                row["location"]
+            ),
         }
         event_list.append(event_dict)
 
@@ -239,7 +265,9 @@ if selected_month is not None:
     year, month = selected_month.split()
 
     df = get_sheet_for_month(selected_month)
-    processed_df = process_dataframe(df, year=year, include_series_based=series_based_class)
+    processed_df = process_dataframe(
+        df, year=year, include_series_based=series_based_class
+    )
     # remove link if current time is greater that start time
     processed_df = process_drupal_link(processed_df)
 
@@ -279,7 +307,9 @@ if selected_month is not None:
     st.divider()
 
     # Calender View
-    calendar_init_date = get_day_view_date(selected_month, st.session_state.CURRENT_MONTH)
+    calendar_init_date = get_day_view_date(
+        selected_month, st.session_state.CURRENT_MONTH
+    )
 
     calendar_resources = [
         {
@@ -337,4 +367,6 @@ if selected_month is not None:
     """
 
     calendar_events = get_calender_event_list(processed_df)
-    calendar = calendar(events=calendar_events, options=calendar_options, custom_css=custom_css)
+    calendar = calendar(
+        events=calendar_events, options=calendar_options, custom_css=custom_css
+    )
