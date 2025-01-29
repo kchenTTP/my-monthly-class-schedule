@@ -11,7 +11,7 @@ import streamlit as st
 from streamlit_calendar import calendar
 from streamlit_gsheets import GSheetsConnection
 
-from config import LOCATIONS_LIST, LOCATION_RESOURCE_ID_MAP, LANGUAGES_DICT, LOCATION_COLOR_MAP 
+from config.config import LOCATIONS_LIST, LOCATION_RESOURCE_ID_MAP, LANGUAGES_DICT, LOCATION_COLOR_MAP 
 
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ def process_dataframe(
     ]
 
     # Fix incorrect datatypes
-    if f"{year}" not in processed_df["date"].iloc(0):
+    if f"{year}" not in processed_df["date"].iloc[0]:
         processed_df["st time"] = (
             year + "/" + processed_df["date"].astype(str) + " " + processed_df["st time"].astype(str)
         )
