@@ -1,3 +1,5 @@
+USE_CSV = True
+DATA_DIRECTORY = "./data/schedule.xlsx"
 LOCATIONS_LIST = ["Chatham Sq", "Online", "Seward Park", "SNFL"]
 LOCATION_RESOURCE_ID_MAP = {
         "Chatham Sq": "chatham",
