@@ -13,6 +13,8 @@ from streamlit_calendar import calendar
 from streamlit_gsheets import GSheetsConnection
 
 from config.config import (
+    USE_CSV,
+    DATA_DIRECTORY,
     LOCATIONS_LIST,
     LOCATION_RESOURCE_ID_MAP,
     LANGUAGES_DICT,
@@ -60,6 +62,20 @@ def get_months_list() -> list[str]:
     return months_list
 
 
+def get_months_list_static() -> list[str]:
+    first_month = date(2023, 5, 1)
+    last_month = date(2025, 7, 1)
+
+    months_list = []
+
+    # Loop backwards in monthly steps
+    while last_month >= first_month:
+        months_list.append(last_month.strftime("%Y %B"))
+        last_month -= relativedelta(months=1)  # Subtract one month
+
+    return months_list
+
+
 def get_sheet_for_month(month: str) -> pd.DataFrame:
     return conn.read(
         worksheet=month,
@@ -100,8 +116,13 @@ def process_dataframe(
         ]
     ]
 
+    if USE_CSV:
+        first_date = str(processed_df["date"].iloc[0])
+    else:
+        first_date = processed_df["date"].iloc[0]
+
     # Fix incorrect datatypes
-    if f"{year}" not in processed_df["date"].iloc[0]:
+    if f"{year}" not in first_date:
         processed_df["st time"] = (
             year
             + "/"
@@ -210,7 +231,8 @@ st.set_page_config(
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 # Connect to Google Sheets
-conn = st.connection("gsheets", type=GSheetsConnection)
+if not USE_CSV:
+    conn = st.connection("gsheets", type=GSheetsConnection)
 
 if "CURRENT_MONTH" not in st.session_state:
     st.session_state["CURRENT_MONTH"] = date.today().strftime("%Y %B")
@@ -228,11 +250,18 @@ with st.sidebar:
     st.header("Options")
     with st.container(border=True):
         st.subheader("Month")
-        selected_month = st.selectbox(
-            "Select a month",
-            options=get_months_list(),
-            index=get_months_list().index(st.session_state.CURRENT_MONTH),
-        )
+        if USE_CSV:
+            selected_month = st.selectbox(
+                "Select a month",
+                options=get_months_list_static(),
+                index=get_months_list_static().index(st.session_state.CURRENT_MONTH),
+            )
+        else:
+            selected_month = st.selectbox(
+                "Select a month",
+                options=get_months_list(),
+                index=get_months_list().index(st.session_state.CURRENT_MONTH),
+            )
 
         st.subheader("Locations")
         selected_locations = st.multiselect(
@@ -264,109 +293,114 @@ st.divider()
 if selected_month is not None:
     year, month = selected_month.split()
 
-    df = get_sheet_for_month(selected_month)
+    st.code(
+        """Note: Chatham Square and Seward Park classes operate on a convenient walk-in basis
+Registration is not required, and participants are admitted on a first-come, first-served basis""",
+        language="java",
+    )
+
+    if USE_CSV:
+        df = pd.read_excel(DATA_DIRECTORY, sheet_name=selected_month)
+    else:
+        df = get_sheet_for_month(selected_month)
+
     processed_df = process_dataframe(
         df, year=year, include_series_based=series_based_class
     )
     # remove link if current time is greater that start time
     processed_df = process_drupal_link(processed_df)
 
-    # TODO: Try Catch when location or language list is empty
-    processed_df = get_location_df(processed_df, locations=selected_locations)
-    processed_df = get_language_df(processed_df, languages=selected_languages)
-    logger.debug(processed_df.info())
+    try:
+        processed_df = get_location_df(processed_df, locations=selected_locations)
+        processed_df = get_language_df(processed_df, languages=selected_languages)
+        logger.debug(processed_df.info())
 
-    # styled_df = processed_df.apply(highlight_today, axis=1)
+        # styled_df = processed_df.apply(highlight_today, axis=1)
 
-    st.code(
+
+        # Table View
+        st.dataframe(
+            processed_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "date": st.column_config.DateColumn("Date", format="YYYY/MM/DD"),
+                "day": st.column_config.TextColumn("Day"),
+                "st time": st.column_config.TimeColumn("Start Time", format="hh:mm a"),
+                "end time": st.column_config.TimeColumn("End Time", format="hh:mm a"),
+                "class": st.column_config.TextColumn("Class Title"),
+                "location": st.column_config.TextColumn("Location", width="small"),
+                "lang": st.column_config.TextColumn("Language"),
+                "drupal link": st.column_config.LinkColumn(
+                    "Registration Link", display_text="Register Here", width="small"
+                ),
+            },
+        )
+        st.divider()
+
+        # Calender View
+        calendar_init_date = get_day_view_date(
+            selected_month, st.session_state.CURRENT_MONTH
+        )
+
+        calendar_resources = [
+            {
+                "id": st.session_state.LOCATION_RESOURCE_ID_MAP.get("Chatham Sq"),
+                "location": "Chatham Square",
+            },
+            {
+                "id": st.session_state.LOCATION_RESOURCE_ID_MAP.get("Online"),
+                "location": "Online",
+            },
+            {
+                "id": st.session_state.LOCATION_RESOURCE_ID_MAP.get("Seward Park"),
+                "location": "Seward Park",
+            },
+            {
+                "id": st.session_state.LOCATION_RESOURCE_ID_MAP.get("SNFL"),
+                "location": "SNFL",
+            },
+        ]
+
+        calendar_options = {
+            "headerToolbar": {
+                "left": "title",
+                "right": "prev,next timeGridDay,timeGridWeek,dayGridMonth",
+            },
+            "editable": "false",
+            "resources": calendar_resources,
+            "selectable": "true",
+            "initialView": "dayGridMonth",
+            "initialDate": calendar_init_date,
+        }
+
+        custom_css = """
+            .fc-button {
+                border: none
+            }
+            .fc-scrollgrid {
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .fc-event-past {
+                opacity: 0.6;
+            }
+            .fc-event-time {
+                font-style: italic;
+            }
+            .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
+                background-color: #99466C;
+                border-color: #99466C;
+            }
+            .fc .fc-button-group > .fc-button.fc-button-active, .fc .fc-button-group > .fc-button:active, .fc .fc-button-group > .fc-button:focus, .fc .fc-button-group > .fc-button:hover {
+                background-color: #99466C;
+                border-color: #99466C;
+            }
         """
-        Note: Chatham Square and Seward Park classes operate on a convenient walk-in basis
-        Registration is not required, and participants are admitted on a first-come, first-served basis
-        """,
-        language="java",
-    )
 
-    # Table View
-    st.dataframe(
-        processed_df,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "date": st.column_config.DateColumn("Date", format="YYYY/MM/DD"),
-            "day": st.column_config.TextColumn("Day"),
-            "st time": st.column_config.TimeColumn("Start Time", format="hh:mm a"),
-            "end time": st.column_config.TimeColumn("End Time", format="hh:mm a"),
-            "class": st.column_config.TextColumn("Class Title"),
-            "location": st.column_config.TextColumn("Location", width="small"),
-            "lang": st.column_config.TextColumn("Language"),
-            "drupal link": st.column_config.LinkColumn(
-                "Registration Link", display_text="Register Here", width="small"
-            ),
-        },
-    )
-    st.divider()
-
-    # Calender View
-    calendar_init_date = get_day_view_date(
-        selected_month, st.session_state.CURRENT_MONTH
-    )
-
-    calendar_resources = [
-        {
-            "id": st.session_state.LOCATION_RESOURCE_ID_MAP.get("Chatham Sq"),
-            "location": "Chatham Square",
-        },
-        {
-            "id": st.session_state.LOCATION_RESOURCE_ID_MAP.get("Online"),
-            "location": "Online",
-        },
-        {
-            "id": st.session_state.LOCATION_RESOURCE_ID_MAP.get("Seward Park"),
-            "location": "Seward Park",
-        },
-        {
-            "id": st.session_state.LOCATION_RESOURCE_ID_MAP.get("SNFL"),
-            "location": "SNFL",
-        },
-    ]
-
-    calendar_options = {
-        "headerToolbar": {
-            "left": "title",
-            "right": "prev,next timeGridDay,timeGridWeek,dayGridMonth",
-        },
-        "editable": "false",
-        "resources": calendar_resources,
-        "selectable": "true",
-        "initialView": "dayGridMonth",
-        "initialDate": calendar_init_date,
-    }
-
-    custom_css = """
-        .fc-button {
-            border: none
-        }
-        .fc-scrollgrid {
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .fc-event-past {
-            opacity: 0.6;
-        }
-        .fc-event-time {
-            font-style: italic;
-        }
-        .fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active {
-            background-color: #99466C;
-            border-color: #99466C;
-        }
-        .fc .fc-button-group > .fc-button.fc-button-active, .fc .fc-button-group > .fc-button:active, .fc .fc-button-group > .fc-button:focus, .fc .fc-button-group > .fc-button:hover {
-            background-color: #99466C;
-            border-color: #99466C;
-        }
-    """
-
-    calendar_events = get_calender_event_list(processed_df)
-    calendar = calendar(
-        events=calendar_events, options=calendar_options, custom_css=custom_css
-    )
+        calendar_events = get_calender_event_list(processed_df)
+        calendar = calendar(
+            events=calendar_events, options=calendar_options, custom_css=custom_css
+        )
+    except:
+        st.write("No classes selected.")
